@@ -1,28 +1,29 @@
 name: Android CI
 on: [push, pull_request]
 
+env:
+  ANDROID_PACKAGES: |
+    cmdline-tools;latest
+    platform-tools
+    build-tools;34.0.0
+    platforms;android-34
+    platforms;android-30
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
 
-      - name: Install Android packages (direct)
-        run: |
-          yes | sdkmanager --licenses || true
-          yes | sdkmanager \
-            "cmdline-tools;latest" \
-            "platform-tools" \
-            "build-tools;34.0.0" \
-            "platforms;android-34" \
-            "platforms;android-30"
+      - uses: android-actions/setup-android@v3
+        with:
+          accept-licenses: true
+          packages: ${{ env.ANDROID_PACKAGES }}
 
-      - name: Build
-        run: ./gradlew --no-daemon clean assembleDebug
+      - run: ./gradlew --no-daemon clean assembleDebug
