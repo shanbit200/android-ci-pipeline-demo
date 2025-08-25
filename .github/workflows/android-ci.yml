@@ -1,92 +1,92 @@
 name: Android CI (Build • Unit + UI tests • Coverage)
 
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
 
-env:
-JAVA_VERSION: '17'
-ANDROID_API_LEVEL: '30'
-ANDROID_BUILD_TOOLS: '34.0.0'
-GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=1g" -Dkotlin.daemon.jvm.options=-Xmx1g
+permissions:
+  contents: read
 
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
 
-steps:
-- name: Checkout
-uses: actions/checkout@v4
+    env:
+      JAVA_VERSION: '17'
+      ANDROID_API_LEVEL: '30'
+      ANDROID_BUILD_TOOLS: '34.0.0'
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=1g" -Dkotlin.daemon.jvm.options=-Xmx1g
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-- name: Set up JDK ${{ env.JAVA_VERSION }}
-uses: actions/setup-java@v4
-with:
-distribution: temurin
-java-version: ${{ env.JAVA_VERSION }}
-cache: gradle
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
 
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v2
 
-- name: Validate Gradle Wrapper
-uses: gradle/wrapper-validation-action@v2
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
+      - name: Install Android SDK components
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-${{ env.ANDROID_API_LEVEL }}
+            build-tools;${{ env.ANDROID_BUILD_TOOLS }}
+            platform-tools
 
-- name: Setup Gradle
-uses: gradle/actions/setup-gradle@v4
+      - name: Make Gradle executable (Linux)
+        run: chmod +x gradlew
 
+      - name: Lint & assemble Debug
+        run: ./gradlew --stacktrace --no-daemon clean lint assembleDebug
 
-- name: Install Android SDK components
-uses: android-actions/setup-android@v3
-with:
-packages: |
-platforms;android-${{ env.ANDROID_API_LEVEL }}
-build-tools;${{ env.ANDROID_BUILD_TOOLS }}
-platform-tools
+      - name: Run unit tests (with coverage)
+        run: ./gradlew --stacktrace --no-daemon testDebugUnitTest
 
+      # Launch emulator and run UI tests with coverage enabled
+      - name: Run UI tests on Emulator (connectedDebugAndroidTest)
+        uses: ReactiveCircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.ANDROID_API_LEVEL }}
+          arch: x86_64
+          profile: pixel_5
+          target: default
+          disable-animations: true
+          script: ./gradlew --stacktrace --no-daemon connectedDebugAndroidTest
 
-- name: Make Gradle executable (Linux)
-run: chmod +x gradlew
+      # Generate combined JaCoCo report (unit + androidTest)
+      - name: Generate combined JaCoCo report
+        run: ./gradlew --stacktrace --no-daemon jacocoFullReport
 
+      - name: Upload coverage HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: app/build/reports/jacoco/jacocoFullReport/html
 
-- name: Lint & assemble Debug
-run: ./gradlew --stacktrace --no-daemon clean lint assembleDebug
+      - name: Upload test results (JUnit XML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-results
+          path: |
+            **/build/test-results/test*/**/*.xml
+            **/build/outputs/androidTest-results/connected/**/*.xml
 
-
-- name: Run unit tests (with coverage)
-run: ./gradlew --stacktrace --no-daemon testDebugUnitTest
-
-
-# Launch emulator and run UI tests with coverage enabled
-- name: Run UI tests on Emulator (connectedDebugAndroidTest)
-uses: ReactiveCircus/android-emulator-runner@v2
-with:
-api-level: ${{ env.ANDROID_API_LEVEL }}
-arch: x86_64
-profile: pixel_5
-target: default
-disable-animations: true
-script: ./gradlew --stacktrace --no-daemon connectedDebugAndroidTest
-
-
-# Generate combined JaCoCo report (unit + androidTest)
-- name: Generate combined JaCoCo report
-run: ./gradlew --stacktrace --no-daemon jacocoFullReport
-
-
-- name: Upload coverage HTML report
-uses: actions/upload-artifact@v4
-with:
-name: coverage-html
-path: app/build/reports/jacoco/jacocoFullReport/html
-
-
-- name: Upload test results (JUnit XML)
-if: always()
-uses: actions/upload-artifact@v4
-with:
-name: junit-results
-path: |
-**/build/test-results/test*/**/*.xml
-**/build/outputs/androidTest-results/connected/**/*.xml
-
-
-# Optional: publish coverage to Codecov (public repos work tokenless)
-# - name: Upload to Codecov
-# uses: codecov/codecov-action@v5
-# with:
-# files: app/build/reports/jacoco/jacocoFullReport/jacocoFullReport.xml
-# fail_ci_if_error: false
+      # Optional: publish coverage to Codecov (public repos work tokenless)
+      # - name: Upload to Codecov
+      #   uses: codecov/codecov-action@v5
+      #   with:
+      #     files: app/build/reports/jacoco/jacocoFullReport/jacocoFullReport.xml
+      #     fail_ci_if_error: false
