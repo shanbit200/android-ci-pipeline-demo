@@ -2,13 +2,37 @@ name: Android CI
 
 on:
   push:
+    branches: [ "**" ]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep packages as a REAL multiline string (no quotes)
+  ANDROID_PACKAGES: |
+    cmdline-tools;latest
+    platform-tools
+    build-tools;34.0.0
+    platforms;android-34
+    platforms;android-30
+  # Helpful for Gradle memory on CI
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs='-Xmx3g -XX:+UseParallelGC'"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v2
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -21,11 +45,41 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           accept-licenses: true
-          packages: |
-            platform-tools
-            build-tools;34.0.0
-            platforms;android-34
-            platforms;android-30
+          # IMPORTANT: pass the multiline value directly (no quotes)
+          packages: ${{ env.ANDROID_PACKAGES }}
 
-      - name: Build
-        run: ./gradlew --no-daemon clean assembleDebug
+      # Optional: show what sdkmanager can see (useful when debugging)
+      - name: List Android packages (debug)
+        run: |
+          echo "SDK ROOT: $ANDROID_SDK_ROOT"
+          yes | sdkmanager --list | head -200 || true
+
+      # If you prefer to be extra-safe, you can force-install via sdkmanager directly.
+      # - name: Ensure packages present (direct install)
+      #   run: |
+      #     yes | sdkmanager --licenses || true
+      #     yes | sdkmanager \
+      #       "cmdline-tools;latest" \
+      #       "platform-tools" \
+      #       "build-tools;34.0.0" \
+      #       "platforms;android-34" \
+      #       "platforms;android-30"
+
+      - name: Prepare Gradle
+        run: chmod +x ./gradlew
+
+      - name: Build (assembleDebug)
+        run: ./gradlew clean assembleDebug --stacktrace
+
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Lint
+        run: ./gradlew lint --stacktrace
+
+      # If you generate reports/artifacts, upload them (optional)
+      # - name: Upload APK
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: app-debug-apk
+      #     path: app/build/outputs/apk/debug/*.apk
