@@ -3,7 +3,6 @@ on: [push, pull_request]
 
 env:
   ANDROID_PACKAGES: |
-    platform-tools
     build-tools;36.0.0
     platforms;android-36
     platforms;android-36
