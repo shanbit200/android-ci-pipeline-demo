@@ -4,6 +4,7 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -14,25 +15,29 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      # Do NOT pass 'packages' here (that’s what keeps breaking)
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
           accept-licenses: true
-          packages: |
-            platform-tools
-            build-tools;35.0.0
-            platforms;android-36
-            platforms;android-35
+
+      # Install packages directly (each as its own argument)
+      - name: Install Android packages (direct, safe)
+        run: |
+          yes | sdkmanager --licenses || true
+          yes | sdkmanager \
+            "platform-tools" \
+            "build-tools;35.0.0" \
+            "platforms;android-36" \
+            "platforms;android-35"
+
+      - name: Verify SDK contents (debug)
+        run: |
+          echo "SDK ROOT: $ANDROID_SDK_ROOT"
+          yes | sdkmanager --list | head -200 || true
+
+      - name: Prepare Gradle
+        run: chmod +x ./gradlew
 
       - name: Build
         run: ./gradlew --no-daemon clean assembleDebug
-
-      - name: Debug packages input
-        run: |
-          cat <<'EOF'
-          platform-tools
-          build-tools;35.0.0
-          platforms;android-36
-          platforms;android-35
-          EOF
-  
