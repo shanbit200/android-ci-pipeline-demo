@@ -26,3 +26,13 @@ jobs:
 
       - name: Build
         run: ./gradlew --no-daemon clean assembleDebug
+
+      - name: Debug packages input
+        run: |
+          cat <<'EOF'
+          platform-tools
+          build-tools;35.0.0
+          platforms;android-36
+          platforms;android-35
+          EOF
+  
