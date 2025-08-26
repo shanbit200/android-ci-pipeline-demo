@@ -41,3 +41,26 @@ jobs:
 
       - name: Build
         run: ./gradlew --no-daemon clean assembleDebug
+
+      - name: Run Unit Tests + Coverage
+        run: ./gradlew testDebugUnitTest jacocoTestDebugUnitTestReport
+
+      - name: Start Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+            api-level: 34
+            arch: x86_64
+            profile: pixel_6
+            script: ./gradlew createDebugCoverageReport
+
+      - name: Collect merged artifacts
+        run: ./gradlew coverageAll
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+            name: coverage-reports
+            path: |
+              app/build/reports/jacoco/*
+              app/build/reports/coverage/debug/*
+
