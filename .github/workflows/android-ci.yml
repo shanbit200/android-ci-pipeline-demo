@@ -45,7 +45,7 @@ jobs:
       - name: Connected tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-            api-level: 36           # 29/30/31/33 also fine
+            api-level: 33           # 29/30/31/33 also fine
             target: default
             arch: x86_64
             profile: pixel
