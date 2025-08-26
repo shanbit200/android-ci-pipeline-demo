@@ -43,7 +43,7 @@ jobs:
         run: ./gradlew --no-daemon clean assembleDebug
 
       - name: Run Unit Tests + Coverage
-        run: ./gradlew testDebugUnitTest jacocoTestDebugUnitTestReport
+        run: ./gradlew testDebugUnitTest jacocoFullReport
 
       - name: Start Emulator
         uses: reactivecircus/android-emulator-runner@v2
