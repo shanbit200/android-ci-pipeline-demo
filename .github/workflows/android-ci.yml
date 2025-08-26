@@ -3,9 +3,9 @@ on: [push, pull_request]
 
 env:
   ANDROID_PACKAGES: |
-    build-tools;36.0.0
+    build-tools;35.0.0
     platforms;android-36
-    platforms;android-36
+    platforms;android-35
 
 jobs:
   build:
