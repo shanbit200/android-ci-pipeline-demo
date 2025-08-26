@@ -23,7 +23,7 @@ android {
 
     buildTypes {
         getByName("debug") {
-            isTestCoverageEnabled = true // enables coverage for connectedDebugAndroidTest
+            enableAndroidTestCoverage = true // enables coverage for connectedDebugAndroidTest
         }
         release {
             isMinifyEnabled = false

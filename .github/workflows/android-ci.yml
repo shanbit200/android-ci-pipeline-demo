@@ -51,17 +51,16 @@ jobs:
             profile: pixel
             script: |
               adb devices
-              ./gradlew --no-daemon connectedDebugAndroidTest
-
-      - name: Run Unit Tests + Coverage
-        run: ./gradlew testDebugUnitTest jacocoFullReport
+              ./gradlew testDebugUnitTest jacocoFullReport
+             
+      
 
       - name: Start Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-            api-level: 34
+            api-level: 33
             arch: x86_64
-            profile: pixel_6
+            profile: pixel
             script: ./gradlew createDebugCoverageReport
 
       - name: Collect merged artifacts
